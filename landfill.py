@@ -2,6 +2,7 @@ import os
 import imp
 import fnmatch
 import datetime
+import playhouse
 
 from peewee import *
 from peewee import Node
@@ -10,7 +11,7 @@ from playhouse.migrate import *
 from termcolor import colored, cprint
 
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 
 class Migration(Model):
@@ -95,7 +96,7 @@ class CustomMigrator(SchemaMigrator):
             return False
 
         if isinstance(op, Operation):
-            migrate(op)
+            playhouse.migrate.migrate(op)
         # If raw query, execute it ourselves
         elif isinstance(op, str):
             self.database.execute_sql(op)
