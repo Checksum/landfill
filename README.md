@@ -1,7 +1,7 @@
 landfill
 ========
 
-*Warning: Alpha quality at best*
+##Warning: Alpha quality at best##
 
 * Migration management for [peewee orm](https://github.com/coleifer/peewee)
 * All database engines supported by peewee (PostgreSQL, MySQL, SQLite)
@@ -24,5 +24,5 @@ Check out the ```example``` to get an idea of how things work
 Credits
 -------
 
-[Charles Leifer](https://github.com/coleifer), for the awesome [peewee orm]
-[Cameron Stitt](https://github.com/cam-stitt), for [arnold](https://github.com/cam-stitt/arnold) from which I've borrowed some ideas
+* [Charles Leifer](https://github.com/coleifer), for giving me something [awesome](https://github.com/coleifer/peewee) to play with
+* [Cameron Stitt](https://github.com/cam-stitt), for [arnold](https://github.com/cam-stitt/arnold), from which I've borrowed some ideas
