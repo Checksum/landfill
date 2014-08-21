@@ -5,8 +5,9 @@ import datetime
 
 from peewee import *
 from peewee import Node
+from playhouse.migrate import *
+
 from termcolor import colored, cprint
-from playhouse.migrate import PostgresqlMigrator, Operation, migrate
 
 
 __version__ = '0.1.0'
@@ -29,12 +30,12 @@ class MigrationException(Exception):
     pass
 
 
-class CustomMigrator(PostgresqlMigrator):
+class CustomMigrator(SchemaMigrator):
     ''' A custom migrator that keeps track of all
     migrations in order to fake them if necessary
     '''
     def __init__(self, database, path, **kwargs):
-        PostgresqlMigrator.__init__(self, database)
+        SchemaMigrator.__init__(self, database)
         # Set options
         self.path = path
         self.direction = kwargs.get('direction', 'up')
@@ -147,6 +148,29 @@ class CustomMigrator(PostgresqlMigrator):
             raise MigrationException("%s migration not found" % migration)
 
 
+class CustomSqliteMigrator(CustomMigrator, SqliteMigrator):
+    pass
+
+
+class CustomMySQLMigrator(CustomMigrator, MySQLMigrator):
+    pass
+
+
+class CustomPostgresqlMigrator(CustomMigrator, PostgresqlMigrator):
+    pass
+
+
+DATABASE_ALIASES = {
+    CustomSqliteMigrator: ['sqlite', 'sqlite3'],
+    CustomMySQLMigrator: ['mysql', 'mysqldb'],
+    CustomPostgresqlMigrator: ['postgres', 'postgresql'],
+}
+
+DATABASE_MAP = dict((value, key)
+                    for key in DATABASE_ALIASES
+                    for value in DATABASE_ALIASES[key])
+
+
 def fake_print(self):
     '''
     This is the overridden __str__ method for Operation
@@ -193,7 +217,7 @@ def get_migrations(directory):
     return sorted(files, key=lambda name: int(name[2:].split("_")[0]))
 
 
-def migrate(database, path, **kwargs):
+def migrate(engine, database, path, **kwargs):
     '''
     Execute the migrations. Pass in kwargs
     '''
@@ -202,8 +226,12 @@ def migrate(database, path, **kwargs):
         'fake': kwargs.get('fake', False),
         'force': kwargs.get('force', False),
         'migration': kwargs.get('migration', None),
-        'transaction': kwargs.get('transaction', True)
+        'transaction': kwargs.get('transaction', True),
     }
+
+    if engine not in DATABASE_MAP:
+        raise MigrationException('Unrecognized database, must be one of: %s' %
+            ', '.join(DATABASE_MAP.keys()))
 
     if not database:
         raise MigrationException("Pass in a valid database")
@@ -212,5 +240,5 @@ def migrate(database, path, **kwargs):
         raise MigrationException("Path to migrations invalid or not readable")
 
     Migration._meta.database = database
-    migrator = CustomMigrator(database, path, **options)
+    migrator = DATABASE_MAP[engine](database, path, **options)
     migrator.run()
