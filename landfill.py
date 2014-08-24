@@ -1,7 +1,9 @@
 import os
-import imp
-import fnmatch
+import re
+import sys
+import pkgutil
 import datetime
+import importlib
 import playhouse
 
 from peewee import *
@@ -35,10 +37,11 @@ class CustomMigrator(SchemaMigrator):
     ''' A custom migrator that keeps track of all
     migrations in order to fake them if necessary
     '''
-    def __init__(self, database, path, **kwargs):
+    def __init__(self, database, module, **kwargs):
         SchemaMigrator.__init__(self, database)
         # Set options
-        self.path = path
+        self.module = module
+        self.module_name = self.module.__name__
         self.direction = kwargs.get('direction', 'up')
         self.migration = kwargs.get('migration', None)
         self.fake = kwargs.get('fake', False)
@@ -77,14 +80,15 @@ class CustomMigrator(SchemaMigrator):
             self.apply_migration(self.migration)
         else:
             # Fetch migrations
-            migrations = get_migrations(self.path)
+            path = os.path.dirname(self.module.__file__)
+            migrations = get_migrations(path)
             for migration in migrations:
                 if not self.force and migration.split("_")[0] <= self.last_id:
                     continue
                 self.apply_migration(migration)
                 self.migrations_run += 1
 
-        if self.migrations_run or self.force                  :
+        if self.migrations_run or self.force:
             cprint("\nNumber of migrations run %d" % self.migrations_run, "magenta")
         else:
             cprint("\nDatabase already upto date!", "magenta")
@@ -119,10 +123,9 @@ class CustomMigrator(SchemaMigrator):
                 cprint("Force running this migration again", "yellow")
 
         # Load the module
-        # module_name = "%s.%s" % (migration_path, migration)
+        module_name = "%s.%s" % (self.module_name, migration)
         try:
-            # module = importlib.import_module(module_name)
-            module = imp.load_source(migration, os.path.join(self.path, '%s.py' % migration))
+            module = importlib.import_module(module_name)
             if not hasattr(module, self.direction):
                 raise MigrationException("%s doesn't have %s migration defined" %
                     (migration, self.direction)
@@ -195,30 +198,25 @@ def fake_print(self):
 
     return str(_fake_run())
 
+
 # Monkey Patch the Operation to show SQL
 setattr(Operation, "__str__", fake_print)
 
 
-def find_files(directory, pattern):
-    ''' Find all files in a directory which matches the pattern '''
-    for root, dirs, files in os.walk(directory):
-        for basename in files:
-            if fnmatch.fnmatch(basename, pattern):
-                yield basename
-
-
-def get_migrations(directory):
+def get_migrations(path):
     '''
     In the specified directory, get all the files which match the pattern
-    000_migration.py
+    0001_migration.py
     '''
-    files = []
-    for fname in find_files(directory, '[0-9]*_*.py'):
-        files.append(fname[:-3])
-    return sorted(files, key=lambda name: int(name[2:].split("_")[0]))
+    pattern = re.compile(r"\d+_[\w\d]+")
+    modules = [name for _, name, _ in pkgutil.iter_modules([path])
+                if pattern.match(name)
+            ]
+
+    return sorted(modules, key=lambda name: int(name.split("_")[0]))
 
 
-def migrate(engine, database, path, **kwargs):
+def migrate(engine, database, module_name, **kwargs):
     '''
     Execute the migrations. Pass in kwargs
     '''
@@ -237,9 +235,11 @@ def migrate(engine, database, path, **kwargs):
     if not database:
         raise MigrationException("Pass in a valid database")
 
-    if not path or not os.path.isdir(path):
+    try:
+        module = importlib.import_module(module_name)
+    except ImportError:
         raise MigrationException("Path to migrations invalid or not readable")
 
     Migration._meta.database = database
-    migrator = DATABASE_MAP[engine](database, path, **options)
+    migrator = DATABASE_MAP[engine](database, module, **options)
     migrator.run()
