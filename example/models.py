@@ -9,6 +9,8 @@ class BaseModel(Model):
 
 class User(BaseModel):
   name = CharField(null=False, max_length=255)
+  email = CharField(null=False, default='')
+  username = CharField(null=False)
 
   class Meta:
     db_table = 'users'
@@ -16,6 +18,7 @@ class User(BaseModel):
 
 class Tweet(BaseModel):
   text = CharField()
+  user = ForeignKeyField(User, to_field=User.id, db_column="user_id", null=True)
 
   class Meta:
     db_table = 'tweet'
