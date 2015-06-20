@@ -33,9 +33,8 @@ from docopt import docopt
 from models import database_proxy, create_tables
 
 
-DATABASE = PostgresqlDatabase('landfill_test', user='postgres')
+DATABASE = PostgresqlDatabase('landfill', user='srinath')
 database_proxy.initialize(DATABASE)
-
 
 def main():
   args = docopt(__doc__, version='Peewee migrator 0.2')
@@ -52,6 +51,7 @@ def main():
     }
     landfill.migrate('postgresql', DATABASE, migrations, **options)
 
-
 if __name__ == "__main__":
   main()
+  #create_tables()
+
