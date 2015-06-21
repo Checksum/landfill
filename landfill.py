@@ -44,7 +44,7 @@ def down(migrator):
 '''
 
 COLUMN_DEFINITION = {
-    'add_column'    : "\n      migrator.add_column('{}', '{}', {})",
+    'add_column'    : "\n      migrator.add_column('{}', '{}', {}_{})",
     'drop_column'   : "\n      migrator.drop_column('{}', '{}')",
     'create_table'  : "\n    {}.create_table(True)",
     'drop_table'    : "\n    {}.drop_table(True)"
@@ -321,13 +321,13 @@ class Generator(object):
 
 
     def generate_definition(self, _type, model_table, table_name, column):
-        definition = self.get_field(_type, model_table, column)
+        definition = self.get_field(_type, model_table, table_name, column)
         if definition:
             self.migration_fields.append(definition)
             # Generate the migration statement
             steps = COLUMN_DIRECTION.get(_type)
-            self.up_columns.append(COLUMN_DEFINITION.get(steps[0]).format(table_name, column, column))
-            self.down_columns.append(COLUMN_DEFINITION.get(steps[1]).format(table_name, column, column))
+            self.up_columns.append(COLUMN_DEFINITION.get(steps[0]).format(table_name, column, table_name, column))
+            self.down_columns.append(COLUMN_DEFINITION.get(steps[1]).format(table_name, column, table_name, column))
         else:
             logger.warning("Could not get definition of field %s" % column)
 
@@ -340,16 +340,16 @@ class Generator(object):
         return self.source_cache.get(model_name, '')
 
 
-    def get_field(self, _type, table, column):
+    def get_field(self, _type, table, table_name, column):
         field = table._meta.fields.get(column)
         field_type = type(field).__name__
         field_attrs = field.__dict__
-        table_name = field_attrs.get('model_class').__name__
+        model_name = field_attrs.get('model_class').__name__
         # Introspect the table definition and search for the field
         # This is done in a very crude way, do it better!
-        model_source = self.get_model_source(_type, table_name)
+        model_source = self.get_model_source(_type, model_name)
         definition = re.search(column + "(.*)", model_source)
-        return definition.group(0).strip() if definition else None
+        return table_name + '_' + definition.group(0).strip() if definition else None
 
 
 def fake_print(self):
