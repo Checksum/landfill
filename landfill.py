@@ -168,7 +168,7 @@ class CustomMigrator(SchemaMigrator):
         exists = Migration.select().where(Migration.name == migration).limit(1).first()
         if exists and self.direction == 'up':
             cprint("This migration has already been run on this server", "red")
-            if not self.force and self.fake:
+            if not self.force or self.fake:
                 return False
             else:
                 cprint("Force running this migration again", "yellow")
