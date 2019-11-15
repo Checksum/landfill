@@ -1,7 +1,7 @@
 import landfill
 from setuptools import setup
 
-dependencies = ['peewee', 'termcolor']
+dependencies = ['peewee']
 
 setup(
     name='landfill',

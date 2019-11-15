@@ -16,11 +16,9 @@ from peewee import Node
 from playhouse.migrate import *
 
 from types import ModuleType
-from cStringIO import StringIO
-from termcolor import colored, cprint
+from io import StringIO
 
-
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 
 GENERATE_TEMPLATE = '''
@@ -124,9 +122,9 @@ class CustomMigrator(SchemaMigrator):
         self.last_id = last.name.split("_")[0] if last else None
 
         if last:
-            cprint("Last run migration %s" % last.name, "magenta")
+            print("Last run migration %s" % last.name)
         else:
-            cprint("No migrations have been run yet", "magenta")
+            print("No migrations have been run yet")
 
     def run(self):
         if self.migration:
@@ -142,12 +140,12 @@ class CustomMigrator(SchemaMigrator):
                 self.migrations_run += 1
 
         if self.migrations_run or self.force:
-            cprint("\nNumber of migrations run %d" % self.migrations_run, "magenta")
+            print("\nNumber of migrations run %d" % self.migrations_run)
         else:
-            cprint("\nDatabase already upto date!", "magenta")
+            print("\nDatabase already upto date!")
 
     def execute_operation(self, op):
-        cprint(op, "green")
+        print(op)
         if self.fake:
             return False
 
@@ -163,15 +161,15 @@ class CustomMigrator(SchemaMigrator):
         '''
         Apply a particular migration
         '''
-        cprint("\nAttempting to run %s" % migration, "cyan")
+        print("\nAttempting to run %s" % migration)
         # First check if the migration has already been applied
         exists = Migration.select().where(Migration.name == migration).limit(1).first()
         if exists and self.direction == 'up':
-            cprint("This migration has already been run on this server", "red")
+            print("This migration has already been run on this server")
             if not self.force or self.fake:
                 return False
             else:
-                cprint("Force running this migration again", "yellow")
+                print("Force running this migration again")
 
         # Load the module
         module_name = "%s.%s" % (self.module_name, migration)
@@ -197,7 +195,7 @@ class CustomMigrator(SchemaMigrator):
                 elif self.direction == 'down' and exists:
                     exists.delete_instance()
 
-            cprint("Done", "green")
+            print("Done")
 
         except ImportError:
             raise MigrationException("%s migration not found" % migration)
