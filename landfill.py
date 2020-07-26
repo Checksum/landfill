@@ -273,9 +273,10 @@ class Generator(object):
         '''
         Extract all peewee models from the passed in module
         '''
-        return { obj._meta.db_table : obj for obj in
-                models.__dict__.itervalues() if
-                isinstance(obj, peewee.BaseModel) and
+        return { obj._meta.table_name : obj for obj in
+                models.__dict__.values() if
+                hasattr(obj, '_meta') and
+                isinstance(obj, peewee.ModelBase) and
                 len(obj._meta.fields) > 1
             }
 
@@ -285,7 +286,7 @@ class Generator(object):
         in the DB.
         '''
         introspector = pwiz.make_introspector(engine, database.database,
-            **database.connect_kwargs)
+            **database.connect_params)
         out_file = '/tmp/db_models.py'
 
         with Capturing() as code:
@@ -301,7 +302,7 @@ class Generator(object):
         return imp.load_source('db_models', out_file)
 
     def run(self):
-        for table_name, py_table in self.py_tables.iteritems():
+        for table_name, py_table in self.py_tables.items():
             # If the table exists in the DB, compare its fields
             if table_name in self.db_tables:
                 logger.debug("%s already exists in the DB. Checking fields now" % table_name)
@@ -321,7 +322,7 @@ class Generator(object):
             # If new table, create the table
             else:
                 logger.info("%s is a new table" % table_name)
-                model_class = py_table._meta.model_class.__name__
+                model_class = py_table._meta.model.__name__
                 self.up_tables.append(COLUMN_DEFINITION.get('create_table').format(model_class))
                 self.down_tables.append(COLUMN_DEFINITION.get('drop_table').format(model_class))
 
@@ -352,7 +353,7 @@ class Generator(object):
             logger.warning("Could not get definition of field %s" % column)
 
     def get_field(self, _type, field_attrs, model, table_name, column):
-        model_name = field_attrs.get('model_class').__name__
+        model_name = field_attrs.get('model').__name__
         # Introspect the table definition and search for the field
         # This is done in a very crude way, do it better!
         model_source = self.get_model_source(_type, model, model_name)
